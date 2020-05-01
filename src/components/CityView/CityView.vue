@@ -788,7 +788,7 @@
                         '/weather/v1/',
                     {
                         headers: {
-                            'Cache-Control': 'no-cache' //清除缓存
+                            'Cache-Control': 'no-cache' //!!!清除缓存
                         },
                         params: {
                                 district_id:geo,

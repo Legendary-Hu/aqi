@@ -150,14 +150,15 @@
             </div>
 
         </div>
-        <div class="charts"
-             v-loading="loading"
-             element-loading-text="正在载入数据"
-             element-loading-spinner="el-icon-loading"
+        <div v-loading="loading"
+        element-loading-text="正在载入数据"
+        element-loading-spinner="el-icon-loading"
         >
-
-            <div id="pie"></div>
-            <div id="line_charts"></div>
+            <div class="charts">
+                <div id="pie"></div>
+                <div id="line_charts"></div>
+            </div>
+            <div id="predict"></div>
         </div>
     </div>
 </template>
@@ -190,6 +191,17 @@
                 city_name:'上海',
                 datetime:'2020-03-20 12:00:00',
                 history_data:{aqi:[],pm25:[],pm10:[],so2:[],no2:[],co:[],o3:[],datetime:[]},
+                pre_data:{
+                    source:[
+                        ['product', 'now','+1:00', '+2:00', '+3:00', '+4:00', '+5:00', '+6:00'],
+                        ['PM2.5'],
+                        ['PM10'],
+                        ['SO2'],
+                        ['NO2'],
+                        ['CO'],
+                        ['O3'],
+                    ]
+                }
             }
         },
         computed:{
@@ -198,6 +210,7 @@
         methods:{
             getAqi(value){
                 this.aqi = value
+                // console.log(this.aqi)
             },
             getWeather(value){
                 this.forecasts = value
@@ -257,11 +270,11 @@
                         bottom: '3%',
                         containLabel: true
                     },
-                    toolbox: {
-                        feature: {
-                            saveAsImage: {}
-                        }
-                    },
+                    // toolbox: {
+                    //     feature: {
+                    //         saveAsImage: {}
+                    //     }
+                    // },
                     xAxis: {
                         type: 'category',
                         boundaryGap: false,
@@ -274,48 +287,124 @@
                         {
                             name: 'AQI',
                             type: 'line',
+                            smooth: true,
                             stack: '总量',
                             data: this.history_data.aqi
                         },
                         {
                             name: 'PM2.5',
                             type: 'line',
+                            smooth: true,
                             stack: '总量',
                             data: this.history_data.pm25
                         },
                         {
                             name: 'PM10',
                             type: 'line',
+                            smooth: true,
                             stack: '总量',
                             data: this.history_data.pm10
                         },
                         {
                             name: 'SO2',
                             type: 'line',
+                            smooth: true,
                             stack: '总量',
                             data: this.history_data.so2
                         },
                         {
                             name: 'NO2',
                             type: 'line',
+                            smooth: true,
                             stack: '总量',
                             data: this.history_data.no2
                         },
                         {
                             name: 'CO',
                             type: 'line',
+                            smooth: true,
                             stack: '总量',
                             data: this.history_data.co
                         },
                         {
                             name: 'O3',
                             type: 'line',
+                            smooth: true,
                             stack: '总量',
                             data: this.history_data.o3
                         }
                     ]
                 }
                 myLine.setOption(option)
+            },
+            drawPre(){
+                let myPre = this.$echarts.init(document.getElementById('predict'))
+                let option = {
+                    title: {
+                        text: '污染气体各成分分析预测',
+                        subtext: '' ,
+                        left: 'center'
+                    },
+                    legend: {
+                        orient: 'vertical',
+                        left: '20%',
+                        top: '5%',
+                        data: ['AQI','PM2.5', 'PM10', 'SO2', 'NO2', 'CO', 'O3']
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        // showContent: false
+                    },
+                    dataset:this.pre_data,
+                    xAxis: {type: 'category',
+                        boundaryGap: false,
+                    },
+                    yAxis: {gridIndex: 0},
+                    grid: {top: '55%'},
+                    series: [
+                        {type: 'line', smooth: true, seriesLayoutBy: 'row'},
+                        {type: 'line', smooth: true, seriesLayoutBy: 'row'},
+                        {type: 'line', smooth: true, seriesLayoutBy: 'row'},
+                        {type: 'line', smooth: true, seriesLayoutBy: 'row'},
+                        {type: 'line', smooth: true, seriesLayoutBy: 'row'},
+                        {type: 'line', smooth: true, seriesLayoutBy: 'row'},
+                        {
+                            type: 'pie',
+                            id: 'pie',
+                            radius: '30%',
+                            center: ['50%', '25%'],
+                            label: {
+                                formatter: '{b}: {@2012} ({d}%)'
+                            },
+                            encode: {
+                                itemName: 'product',
+                                value: '2012',
+                                tooltip: '2012'
+                            }
+                        }
+                    ]
+                };
+
+                myPre.on('updateAxisPointer', function (event) {
+                    var xAxisInfo = event.axesInfo[0];
+                    if (xAxisInfo) {
+                        var dimension = xAxisInfo.value + 1;
+                        myPre.setOption({
+                            series: {
+                                id: 'pie',
+                                label: {
+                                    formatter: '{b}: {@[' + dimension + ']} ({d}%)'
+                                },
+                                encode: {
+                                    value: dimension,
+                                    tooltip: dimension
+                                }
+                            }
+                        });
+                    }
+                });
+
+                myPre.setOption(option);
             },
             getData(params){
                 post('http://localhost:8000/aqi/select/',
@@ -339,6 +428,12 @@
                         {name:'CO',value:data.CO},
                         {name:'O3',value:data.O3},
                     )
+                    this.pre_data.source[1].push(data.pm25)
+                    this.pre_data.source[2].push(data.pm10)
+                    this.pre_data.source[3].push(data.SO2)
+                    this.pre_data.source[4].push(data.NO2)
+                    this.pre_data.source[5].push(data.CO)
+                    this.pre_data.source[6].push(data.O3)
                     //请求到数据后重新渲染图表
                     this.loading = false
                     this.drawPie()
@@ -356,6 +451,7 @@
                 }).then(res =>{
                     // console.log(res)
                     let data = res.data
+                    // console.log(data)
                     let obj = {}
                     data = data.reduce((item,next) =>{ //数组去重
                         obj[next.datetime] ? '': obj[next.datetime] = true && item.push(next)
@@ -370,10 +466,57 @@
                         this.history_data.co.push(item.co)
                         this.history_data.o3.push(item.o3)
                         this.history_data.datetime.push(item.datetime.slice(11))
+
                     }
                     this.loading = false
                     this.drawLine()
                     // console.log(this.history_data)
+                    // console.log(this.history_data.aqi.length)
+
+                    //历史数据格式化处理
+                    let aqi_params = this.format(this.history_data.aqi)
+                    let pm25_params = this.format(this.history_data.pm25)
+                    let pm10_params = this.format(this.history_data.pm10)
+                    let so2_params = this.format(this.history_data.so2)
+                    let no2_params = this.format(this.history_data.no2)
+                    let co_params = this.format(this.history_data.co)
+                    let o3_params = this.format(this.history_data.o3)
+                    //获取前六小时数据后，进行传值预测
+                    axios.all([
+                        axios.post('http://localhost:5000/predict/',
+                             pm25_params
+                        ),axios.post('http://localhost:5000/predict/',
+                             pm10_params
+                        ),axios.post('http://localhost:5000/predict/',
+                             so2_params
+                        ),axios.post('http://localhost:5000/predict/',
+                             no2_params
+                        ),axios.post('http://localhost:5000/predict/',
+                             co_params
+                        ),axios.post('http://localhost:5000/predict/',
+                             o3_params
+                        ),
+                    ]).then(axios.spread((res1,res2,res3,res4,res5,res6) => {
+                        console.log(res1.data.data)
+                        for (let i = 0; i < 6 ; i++) {
+                            this.pre_data.source[1].push(res1.data.data[i])
+                        }for (let i = 0; i < 6 ; i++) {
+                            this.pre_data.source[2].push(res2.data.data[i])
+                        }for (let i = 0; i < 6 ; i++) {
+                            this.pre_data.source[3].push(res3.data.data[i])
+                        }for (let i = 0; i < 6 ; i++) {
+                            this.pre_data.source[4].push(res4.data.data[i])
+                        }for (let i = 0; i < 6 ; i++) {
+                            this.pre_data.source[5].push(res5.data.data[i])
+                        }for (let i = 0; i < 6 ; i++) {
+                            this.pre_data.source[6].push(res6.data.data[i])
+                        }
+                        this.drawPre()
+                    })).catch(err => {
+                        console.log(err)
+                    })
+                    console.log(this.pre_data)
+
                 }).catch(err =>{
                     console.log(err)
                 })
@@ -403,8 +546,23 @@
                     this.getHistory_data({cityname:'上海'})
                 })
             },
+            format(history_data){//格式化历史数据
+                let params = {
+                    "data":[[], [], [], [], [], []],
+                    "predictRows": 2
+                }
+                for (let i = 0; i <history_data.length ; i++) {
+                    params.data[i].push(i+1)
+                    params.data[i].push(history_data[i])
+                }
+                params.data.splice(eval(history_data.length),eval(params.data.length-history_data.length)) //删除多余空元素
+                // console.log(params)
+                // let data = JSON.stringify(params)
+                return params
+            },
 
         },
+
         created() {
             let type = undefined
             type = typeof(this.$route.query.cityname)
@@ -415,9 +573,11 @@
                 this.getLocation()
             }
         },
+
         mounted() {
             this.drawPie()
             this.drawLine()
+            this.drawPre()
         },
         watch: { //监听路由变化，query变化时刷新数据
             '$route' (to, from) {
@@ -569,6 +729,10 @@
         width: 800px;
         height: 500px;
 
+    }
+    #predict{
+        width: 100%;
+        height: 700px;
     }
     .charts{
         display: flex;
